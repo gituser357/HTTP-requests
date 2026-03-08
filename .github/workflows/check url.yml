@@ -1,0 +1,50 @@
+name: Check file availability
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check-file:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: file-check
+      cancel-in-progress: false
+    
+    steps:
+      - name: Check URL status
+        id: check
+        env:
+          # URL берётся из переменной окружения
+          FILE_URL: ${{ vars.CHECKURL }}  # или ${{ secrets.FILE_URL }}, если ссылка секретная
+        run: |
+          # Используем переменную из env
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$CHECKURL")
+          
+          echo "code=$HTTP_CODE" >> $GITHUB_OUTPUT
+          
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "? Проблема! Код ответа: $HTTP_CODE для URL: $CHECKURL"
+          else
+            echo "? Всё хорошо, код 200 для $FILE_URL"
+          fi
+      
+      - name: Send Telegram notification on failure
+        if: steps.check.outputs.code != '200'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TG_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          FILE_URL: ${{ vars.CHECKURL }}  # Снова передаём URL для сообщения
+        run: |
+          MESSAGE="? *Сервис недоступен!*
+          • Время: $(TZ='Europe/Moscow' date '+%d.%m.%Y %H:%M:%S')
+          • URL: ${CHECKURL}
+          • Код ответа: ${{ steps.check.outputs.code }}
+          
+          Проверьте доступность сервиса."
+          
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            -d chat_id="${TG_CHAT_ID}" \
+            -d text="${MESSAGE}" \
+            -d parse_mode="Markdown"
