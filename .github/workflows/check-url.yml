@@ -2,7 +2,7 @@ name: Simple file check
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '45 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
       - name: Check URL
         id: check
         run: |
-          URL="https://www.google.com/favicon.ico"
+          URL="https://rau.nalog.gov.ru/backend/api/v2/sros?take=15&skip=0&filter.periodDate=2026-01-01"
           
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL")
           echo "code=$HTTP_CODE" >> $GITHUB_OUTPUT
