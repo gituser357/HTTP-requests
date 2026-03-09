@@ -10,12 +10,30 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      # Шаг 1: ДИАГНОСТИКА SSL (добавьте это перед основной проверкой)
+      - name: Debug SSL certificate
+        env:
+          CHECKURL: ${{ vars.CHECKURL }}
+        run: |
+          echo "🔍 ДИАГНОСТИКА SSL ДЛЯ $CHECKURL"
+          echo "===================================="
+          echo "➡️ Заголовки ответа (первые 20 строк):"
+          curl -vvI "$CHECKURL" 2>&1 | head -20 || true
+          echo "===================================="
+          echo "➡️ Подробный вывод curl:"
+          curl --verbose "$CHECKURL" > /dev/null 2>&1 || true
+          echo "===================================="
+          echo "✅ Диагностика завершена"
+      
+      # Шаг 2: ОСНОВНАЯ ПРОВЕРКА (с флагом -k для обхода SSL ошибок)
       - name: Check URL status
         id: check
         env:
           CHECKURL: ${{ vars.CHECKURL }}
         run: |
-          # Добавлен флаг -k для пропуска SSL-ошибок
+          echo "🔍 Проверяю доступность: $CHECKURL"
+          
+          # Используем -k для игнорирования SSL проблем
           HTTP_CODE=$(curl -s -k -o /dev/null -w "%{http_code}" --max-time 15 "$CHECKURL")
           
           echo "code=$HTTP_CODE" >> $GITHUB_OUTPUT
@@ -26,6 +44,7 @@ jobs:
             echo "❌ Проблема! Код ответа: $HTTP_CODE"
           fi
       
+      # Шаг 3: УВЕДОМЛЕНИЕ В TELEGRAM (только при ошибке)
       - name: Send Telegram notification on failure
         if: steps.check.outputs.code != '200'
         env:
@@ -45,3 +64,5 @@ jobs:
             -d chat_id="${TG_CHAT_ID}" \
             -d text="${MESSAGE}" \
             -d parse_mode="Markdown"
+          
+          echo "📨 Уведомление отправлено в Telegram"
