@@ -1,41 +1,29 @@
-name: RAU check
+name: API RAU Health Check
+
 
 on:
   schedule:
-    - cron: '45 * * * *'
-  workflow_dispatch:
+    - cron: '*/10 * * * *'  # Каждые 10 минут
+  workflow_dispatch:  # Ручной запуск
+
 
 jobs:
-  check:
+  check-api:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Check URL
-        id: check
+      - name: Check API endpoint
+        id: api-check
         run: |
-          URL="https://rau.nalog.gov.ru/backend/api/v1/reference-book/regions"
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.API_URL_REGIONS }}")
+          echo "status_code=$response" >> $GITHUB_OUTPUT
           
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL")
-          echo "code=$HTTP_CODE" >> $GITHUB_OUTPUT
-      
-      - name: Send notification on SUCCESS
-        if: steps.check.outputs.code == '200'
-        env:
-          TG_TOKEN: ${{ secrets.TG_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-        run: |
-          MESSAGE="✅ *Успех!* Код 200"
-          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-            -d chat_id="${TG_CHAT_ID}" \
-            -d text="${MESSAGE}"
-      
-      - name: Send notification on FAILURE
-        if: steps.check.outputs.code != '200'
-        env:
-          TG_TOKEN: ${{ secrets.TG_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-        run: |
-          MESSAGE="❌ *Ошибка!* Код: ${{ steps.check.outputs.code }}"
-          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-            -d chat_id="${TG_CHAT_ID}" \
-            -d text="${MESSAGE}"
+          # Отправляем уведомление ТОЛЬКО если статус 200
+          if [ "$response" -eq 200 ]; then
+            echo "API returned 200 — sending notification"
+            curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ secrets.TG_CHAT_ID }}" \
+              -d text="✅ API Check OK!\nURL: ${{ secrets.API_URL_REGIONS }}\nStatus Code: $response\nTimestamp: $(date --utc +'%Y-%m-%d %H:%M:%S UTC')"
+          else
+            echo "API returned $response — no notification sent"
+          fi
