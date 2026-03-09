@@ -17,6 +17,7 @@ jobs:
         id: check
         env:
           # URL берётся из переменной окружения
+          # яхаааааайййй
           FILE_URL: ${{ vars.CHECKURL }}  # или ${{ secrets.FILE_URL }}, если ссылка секретная
         run: |
           # Используем переменную из env
