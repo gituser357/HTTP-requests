@@ -13,7 +13,7 @@ jobs:
       - name: Check URL
         id: check
         run: |
-          URL="https://fedresurs.ru/settings/clientApp"
+          URL="https://rau.nalog.gov.ru/backend/api/v1/reference-book/regions"
           
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL")
           echo "code=$HTTP_CODE" >> $GITHUB_OUTPUT
