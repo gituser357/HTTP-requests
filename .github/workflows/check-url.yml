@@ -1,13 +1,13 @@
-name: API RAU Health Check
+#name: API RAU Health Check
 
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # Каждые 10 минут
+   # - cron: '*/10 * * * *'  # Каждые 10 минут
   workflow_dispatch:  # Ручной запуск
 
 
-jobs:
+#jobs:
   check-api:
     runs-on: ubuntu-latest
 
