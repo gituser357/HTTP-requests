@@ -1,4 +1,4 @@
-name: Check file availability
+name: Simple check
 
 on:
   schedule:
@@ -6,63 +6,15 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-file:
+  check:
     runs-on: ubuntu-latest
     
     steps:
-      # Шаг 1: ДИАГНОСТИКА SSL (добавьте это перед основной проверкой)
-      - name: Debug SSL certificate
-        env:
-          CHECKURL: ${{ vars.CHECKURL }}
+      - name: Check Google
         run: |
-          echo "🔍 ДИАГНОСТИКА SSL ДЛЯ $CHECKURL"
-          echo "===================================="
-          echo "➡️ Заголовки ответа (первые 20 строк):"
-          curl -vvI "$CHECKURL" 2>&1 | head -20 || true
-          echo "===================================="
-          echo "➡️ Подробный вывод curl:"
-          curl --verbose "$CHECKURL" > /dev/null 2>&1 || true
-          echo "===================================="
-          echo "✅ Диагностика завершена"
-      
-      # Шаг 2: ОСНОВНАЯ ПРОВЕРКА (с флагом -k для обхода SSL ошибок)
-      - name: Check URL status
-        id: check
-        env:
-          CHECKURL: ${{ vars.CHECKURL }}
-        run: |
-          echo "🔍 Проверяю доступность: $CHECKURL"
+          echo "🟢 Начинаю проверку в $(date)"
           
-          # Используем -k для игнорирования SSL проблем
-          HTTP_CODE=$(curl -s -k -o /dev/null -w "%{http_code}" --max-time 15 "$CHECKURL")
+          # Проверяем Google (всегда работает)
+          curl -I https://www.google.com --max-time 10
           
-          echo "code=$HTTP_CODE" >> $GITHUB_OUTPUT
-          
-          if [ "$HTTP_CODE" -eq 200 ]; then
-            echo "✅ Успешно! Код 200"
-          else
-            echo "❌ Проблема! Код ответа: $HTTP_CODE"
-          fi
-      
-      # Шаг 3: УВЕДОМЛЕНИЕ В TELEGRAM (только при ошибке)
-      - name: Send Telegram notification on failure
-        if: steps.check.outputs.code != '200'
-        env:
-          TG_TOKEN: ${{ secrets.TG_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-          CHECKURL: ${{ vars.CHECKURL }}
-        run: |
-          MESSAGE="❌ *Сервис с файлом недоступен!*
-          
-          • Время: $(TZ='Europe/Moscow' date '+%d.%m.%Y %H:%M:%S')
-          • URL: \`${CHECKURL}\`
-          • Код ответа: ${{ steps.check.outputs.code }}
-          
-          🔴 Требуется внимание!"
-          
-          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-            -d chat_id="${TG_CHAT_ID}" \
-            -d text="${MESSAGE}" \
-            -d parse_mode="Markdown"
-          
-          echo "📨 Уведомление отправлено в Telegram"
+          echo "🟢 Проверка завершена"
