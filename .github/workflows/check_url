@@ -1,0 +1,31 @@
+name: Check URL Status Code
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # Запуск каждые 5 минут (настройте по необходимости)
+  workflow_dispatch: # Возможность ручного запуска workflow
+
+jobs:
+  check-url:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check URL status code
+        uses: envoy/check-url-action@v1.0.0
+        with:
+          url: ${{ vars.CHECK_URL }} # URL для проверки (из переменных репозитория)
+          codes-allowed: '200' # Разрешённый статус-код
+          retry-count: 3 # Количество попыток при ошибке
+          retry-delay: 1000 # Задержка между попытками (в мс)
+        id: url-check # Идентификатор шага для доступа к результатам
+
+      - name: Send Telegram notification
+        if: ${{ steps.url-check.outcome != 'success' }} # Отправляем уведомление только если статус-код != 200
+        uses: ritikagupta1297/telegram-workflow-action@v1.0.0
+        with:
+          token: ${{ secrets.TG_TOKEN }} # Токен бота Telegram (из секретов репозитория)
+          chat_id: ${{ secrets.TG_CHAT_ID }} # ID чата Telegram (из секретов репозитория)
+          message: | # Текст сообщения
+            ⚠️ URL check failed!
+            URL: ${{ vars.CHECK_URL }}
+            Status code: ${{ steps.url-check.outputs.code }}
+            Reason: ${{ steps.url-check.outputs.reason }}
